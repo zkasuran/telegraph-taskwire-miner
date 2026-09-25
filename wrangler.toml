@@ -1,0 +1,7 @@
+name = "telegraph-task"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+# The MiniMax key is not here. It is a Cloudflare secret set on the deployed worker with
+# `wrangler secret put MINIMAX_API_KEY` and read as env.MINIMAX_API_KEY. It is never written
+# into this file, worker.js, a descriptor or any other file in this repo.

@@ -1,0 +1,30 @@
+NOTICE
+
+The TaskWire miner's own code is source-available no-derivatives licensed (SAND 1.0),
+Copyright (c) 2026 zkasuran, see LICENSE. This file records the third-party terms that
+travel with it.
+
+--------------------------------------------------------------------------------
+api.minimax.io (MiniMax API, Open Platform)
+
+  Provides       The language-model answer for every intent this miner serves.
+                 AGENT_TASK and TASK_COMPLETION are each answered by one call to
+                 MiniMax-M2.5-highspeed at request time.
+  Plan           A paid commercial MiniMax plan held by the operator. The API key is
+                 a Cloudflare secret set with `wrangler secret put MINIMAX_API_KEY`
+                 and read as env.MINIMAX_API_KEY. It is never in the code or the repo.
+                 Unlike the keyless wire miners, this one calls a keyed provider on
+                 purpose, as a probe.
+  Output rights  MiniMax's consumer App and Web Terms of Service state "We do not
+                 claim ownership of User Contributions or User Generated Content" but
+                 limit that consumer surface to "personal, non-commercial use only".
+                 Those consumer terms do not govern the paid API Open Platform this
+                 miner calls. The exact Open Platform clause on output ownership and
+                 commercial use could not be read, because the platform terms page is
+                 client-rendered and returned no text to a server fetch, so it is
+                 recorded as unverified and carried as an open item in DATA-SOURCES.md.
+  Credit         Published in every answer, in the attribution field: "Answer produced
+                 with MiniMax (MiniMax-M2.5-highspeed) under a commercial MiniMax plan
+                 held by zkasuran."
+  Terms          https://platform.minimax.io/protocol/user-agreement (unverified,
+                 client-rendered)

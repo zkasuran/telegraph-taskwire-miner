@@ -1,0 +1,102 @@
+version: "1"
+kind: miner
+id: 7427
+slug: taskwire-task-completion
+protocol: generic
+name: TaskWire Task Completion
+description: >
+  Task completion for a described multi-step task, answered by a language model at request time.
+  Send the task or the whole question and the miner returns the finished result or the full
+  sequence of steps that completes the task from preparation through execution to a verified
+  final result. The answer is produced with MiniMax under a commercial plan held by the operator,
+  so this miner is not keyless. Serves the TASK_COMPLETION intent.
+base_url: https://telegraph-task.margyn.workers.dev
+
+docs:
+  documentation: https://telegraph-task.margyn.workers.dev/
+
+limitations:
+  - code: MAX_PARAM_VALUE
+    message: task is the task to complete or the whole question. A single task, not a batch.
+    param: task
+    property: length
+    value_num: 8000
+    operator: lte
+
+rate_limit_per_sec: 2
+cache_ttl_sec: 10
+circuit_threshold: 5
+circuit_cooldown_seconds: 30
+
+input_schema:
+  type: object
+  properties:
+    question:
+      type: string
+      description: >
+        The full natural-language question, verbatim, for example 'Outline the steps to migrate a
+        PostgreSQL database to MySQL.'. The miner reads the task from it, so passing the whole
+        question works as well as passing the task on its own.
+    task:
+      type: string
+      description: The task to complete, if supplied on its own.
+    goal:
+      type: string
+      description: The goal to complete, an alternative name for the task.
+
+output_schema:
+  type: object
+  properties:
+    headline:
+      type: string
+      description: The first sentence of the answer, a short label for a reader.
+    summary:
+      type: string
+      description: The finished result or the full sequence of steps that completes the task.
+    confidence:
+      type: number
+      description: 0.95 for a direct model answer, lower when the answer is degraded.
+    as_of:
+      type: string
+      description: Timestamp the answer was produced.
+
+endpoints:
+  - path: /task-complete
+    external_path: /task-complete
+    method: GET
+    description: >
+      Complete one task, the task as a query parameter (?task=...). Also accepts a whole question
+      in ?question= or ?query= or the goal in ?goal=.
+
+semantics:
+  signal_mapping:
+    confidence_field: confidence
+    label_field: summary
+    reason_field: summary
+  supported_intents:
+    - TASK_COMPLETION
+
+on_chain:
+  transform: direct
+  min_price_usdc: 0.01
+  fields:
+    strings:
+      - index: 0
+        name: headline
+        description: The first sentence of the answer.
+        source_path: headline
+      - index: 1
+        name: summary
+        description: The finished result or the steps that complete the task.
+        source_path: summary
+    integers:
+      - index: 0
+        name: confidence_x100
+        description: Confidence in the answer, scaled by one hundred to keep two digits as an integer.
+        source_path: confidence
+        multiplier: 100
+  request:
+    - endpoint: task-complete
+      method: GET
+      query_params:
+        task: { source: strings.1 }
