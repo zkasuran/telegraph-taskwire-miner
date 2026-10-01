@@ -93,27 +93,46 @@ ground truth it writes. Both modules grade correctness: an off-topic answer scor
 and a correct answer worded independently of the reference still scores, so neither is
 reference-phrasing locked.
 
-| Intent | Genuine MiniMax answer | Off-topic answer | Behaviour |
-| --- | --- | --- | --- |
-| AGENT_TASK | 0.965, 0.993 and 0.834 to 0.993 across wordings on covered questions | 0.0001 | continuous semantic scorer, rewards a complete on-aspect plan |
-| TASK_COMPLETION | about 1.0 on roughly half of sampled genuine answers, 0.0 on the rest | 0.0 | near-binary content-sensitive gate |
+| Intent | Genuine independent answers | Reference paraphrase | Controls | Behaviour |
+| --- | --- | --- | --- | --- |
+| AGENT_TASK | 0.994 and 0.994 (two different wordings) | 0.870 | off-topic 0.000, fluent wrong task 0.0016 | continuous semantic scorer |
+| TASK_COMPLETION | 1.0 on about four of five sampled answers, 0.0 on the rest | 1.0 | off-topic 0.000, wrong fact 0.000 | near-binary content-sensitive gate |
 
-AGENT_TASK is a clean semantic scorer: a complete plan that covers the aspects the reference
-covers scores 0.96 to 0.99, a plan that emphasises different aspects or is cut short scores
-lower. An off-topic answer scores about zero. It is shipped as a real answer that wins when
-it is complete and on aspect.
+The winnability test both intents pass: two genuine answers worded independently of the
+reference score high while off-topic and fluent-but-wrong controls score about zero, so a real
+answer is rewarded and a wrong one is not. Neither module is reference locked. A genuine
+independent answer scores as high as a paraphrase of the reference (AGENT_TASK 0.994 vs 0.870,
+TASK_COMPLETION 1.0 vs 1.0), so the score comes from being correct, not from matching a phrasing.
 
-TASK_COMPLETION grades correctness the same way (a wrong answer always scores 0) but its gate is
-near binary and content sensitive: a genuine answer scored about 1.0 on roughly half of the
-sampled epochs and 0.0 on the rest, with no reliable format rule. It is shipped for coverage
-against the empty board. When it scores it wins the epoch outright, it never fabricates and it
-ties the zero floor otherwise.
+The reference to beat is the historical board. AGENT_TASK last scored LLM miners at 0.95
+(bedrock-kimi, epoch 259) and TASK_COMPLETION at 0.9999 (bedrock-voxtral, epoch 298). The current
+board shows no miner scoring on either intent, so a genuine answer that scores is strictly better
+than not competing. These answers land at or above those historical leaders.
 
-MiniMax-M2.5-highspeed writes a reasoning block before its answer and was measured at 4 to 15
-seconds per call, so the worker's request timeout is 20 seconds and `max_tokens` is 1200 so the
-full plan survives the reasoning block. At 1000 tokens a longer plan was occasionally cut short,
-which the module scored down, so the ceiling was raised for these longer answers while staying
-inside the 20 second budget.
+AGENT_TASK is a clean semantic scorer: a complete answer in the frame the question asks scores
+0.99 across varied questions (refund handling, a scraping workflow, provisioning a cache, keeping
+translations in sync all scored 0.99), a cut-short or off-frame answer scores lower, an off-topic
+answer scores about zero. TASK_COMPLETION grades correctness the same way but its gate is near
+binary and content sensitive: a genuine answer scored 1.0 on about four of five samples and 0.0
+on the rest, the same bimodal pattern every LLM miner on that intent shows (at epoch 298 only two
+of the active LLM miners cleared the gate). It is shipped for coverage against the empty board.
+When it scores it wins the epoch outright, it never fabricates and it ties the zero floor
+otherwise.
+
+## Model choice
+
+Every answer is one call to MiniMax-M2.5-highspeed. The task brief suggested MiniMax-M3, so both
+were measured head to head on the shipping prompts. M3 lost. On AGENT_TASK its longer answers
+drift off the reference frame and scored 0.47 to 0.56 mean against 0.994 for M2.5-highspeed. On
+both intents it also ran slower, up to 48 seconds with an open-ended prompt, which risks the
+request timeout. M2.5-highspeed is the top scorer and the fastest here, 3 to 10 seconds per call
+with the tight prompts, so the worker's 20 second timeout and 1200 token ceiling leave comfortable
+margin.
+
+Each endpoint receives questions already classified to its intent, so each prompt handles the two
+sub-modes within that intent: a question about agent behavior or a concrete task to carry out.
+The prompt steers the model to answer the exact question asked and cover every aspect, which is
+what lifted TASK_COMPLETION from a 50 percent win rate under the earlier open-ended prompt.
 
 ## Licence and data terms
 

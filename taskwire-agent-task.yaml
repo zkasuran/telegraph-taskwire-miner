@@ -5,12 +5,12 @@ slug: taskwire-agent-task
 protocol: generic
 name: TaskWire Agent Task
 description: >
-  Agent task planning for a described multi-step task, answered by a language model at request
-  time. Send the task or the whole question and the miner returns the concrete plan an agent
-  should follow to carry it out end to end, leading with the first action then the ordered steps
-  through preparation, the main work, checking each result and a verified outcome. The answer is
-  produced with MiniMax under a commercial plan held by the operator, so this miner is not
-  keyless. Serves the AGENT_TASK intent.
+  AGENT_TASK answers for autonomous AI agent queries, produced by a language model at request
+  time. A query is either a question about how an agent behaves and decides (tool use, planning,
+  multi-step autonomy) or itself a task for the agent to carry out. Send the question or the task
+  and the miner returns a direct answer to a behavior question or the concrete end to end plan for
+  a task, covering every aspect the query raises. The answer is produced with MiniMax under a
+  commercial plan held by the operator, so this miner is not keyless. Serves the AGENT_TASK intent.
 base_url: https://telegraph-task.margyn.workers.dev
 
 docs:

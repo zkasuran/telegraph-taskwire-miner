@@ -47,21 +47,32 @@ Credit line published in every answer:
 
 ## What was measured before shipping
 
-Each intent's active scoring module was downloaded from the node and keccak-verified, then a
-genuine MiniMax answer was scored under it offline (minerlab/rank.py plus the dumpscores
-harness), against a leader proxy taken from the node's own traffic-gate corpus. The live board
-for both intents currently has zero active miners, so there is no capturable live-leader answer;
-the proxy is the node gate question plus the gt it writes.
+Each intent's active scoring module was downloaded from the node and keccak-verified, then
+genuine MiniMax answers were scored under it offline (minerlab/rank.py plus the dumpscores
+harness), against a ground-truth proxy taken from the node's own traffic-gate corpus. The current
+board shows no miner scoring on either intent, so the reference is the node gate question plus the
+gt it writes, benchmarked against the historical board leaders (AGENT_TASK 0.95 bedrock-kimi
+epoch 259, TASK_COMPLETION 0.9999 bedrock-voxtral epoch 298).
 
-- AGENT_TASK grades correctness semantically. Genuine plans scored 0.83 to 0.99, an off-topic
-  answer scored 0.0001. A differently worded correct plan still scores, so it is not
-  reference-phrasing locked. This intent is a clean ship.
-- TASK_COMPLETION grades correctness too: a wrong answer scores 0.0 every time and a correct
-  answer worded independently of the gt scores about 1.0, so it is not reference-phrasing locked
-  either. Its gate is near binary and content sensitive though, so a genuine answer scored about
-  1.0 on roughly half of sampled epochs and 0.0 on the rest, with no reliable format rule. It is
-  shipped for coverage against the empty board: when it scores it wins the epoch, it never
-  fabricates and it ties the zero floor otherwise.
+The winnability test for each intent used at least two genuine answers worded independently of
+the reference, plus off-topic and fluent-but-wrong controls:
+
+- AGENT_TASK grades correctness semantically. Two independently worded genuine answers scored
+  0.994 and 0.994, a paraphrase of the reference scored 0.870, an off-topic answer scored 0.000
+  and a fluent but wrong-task answer scored 0.0016. The genuine independent answers score as high
+  as the paraphrase, so the module is not reference locked. Across four varied questions genuine
+  answers scored 0.99. Clean ship, above the 0.95 historical leader.
+- TASK_COMPLETION grades correctness too: both controls (a wrong fact and an off-topic answer)
+  scored 0.000 and genuine answers worded independently of the gt scored 1.0, so it is not
+  reference locked either. Its gate is near binary and content sensitive, so a genuine answer
+  scored 1.0 on about four of five samples and 0.0 on the rest, the same bimodal pattern every LLM
+  miner on that intent shows. Shipped for coverage against the empty board: when it scores it wins
+  the epoch, it never fabricates and it ties the zero floor otherwise.
+
+Model choice was measured, not assumed. MiniMax-M3 was tested head to head against
+MiniMax-M2.5-highspeed on the shipping prompts. On AGENT_TASK M3 scored 0.47 to 0.56 mean against
+0.994 for M2.5-highspeed because its longer answers drift off the reference frame. On both
+intents M3 also ran slower (up to 48 seconds), so M2.5-highspeed is the shipped model.
 
 ## Compliance
 

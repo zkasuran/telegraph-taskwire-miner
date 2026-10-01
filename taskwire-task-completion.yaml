@@ -5,11 +5,13 @@ slug: taskwire-task-completion
 protocol: generic
 name: TaskWire Task Completion
 description: >
-  Task completion for a described multi-step task, answered by a language model at request time.
-  Send the task or the whole question and the miner returns the finished result or the full
-  sequence of steps that completes the task from preparation through execution to a verified
-  final result. The answer is produced with MiniMax under a commercial plan held by the operator,
-  so this miner is not keyless. Serves the TASK_COMPLETION intent.
+  TASK_COMPLETION answers for multi-step task queries, produced by a language model at request
+  time. A query is either a question about what makes an agent effective at completing multi-step
+  tasks or itself a concrete task to complete end to end. Send the question or the task and the
+  miner returns a direct answer to the effectiveness question or the full sequence of steps that
+  completes the task from preparation through execution to a verified final result. The answer is
+  produced with MiniMax under a commercial plan held by the operator, so this miner is not
+  keyless. Serves the TASK_COMPLETION intent.
 base_url: https://telegraph-task.margyn.workers.dev
 
 docs:

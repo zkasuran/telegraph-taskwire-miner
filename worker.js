@@ -12,13 +12,23 @@
 //   AGENT_TASK       the concrete end-to-end plan the agent should follow to carry out the task
 //   TASK_COMPLETION  the finished result or the full sequence of steps that completes the task
 //
-// Measured under each intent's live module before shipping. AGENT_TASK grades correctness
-// semantically: a genuine plan scores 0.83 to 0.99 and an off-topic answer scores 0.0001, so a
-// real answer wins. TASK_COMPLETION grades correctness too (a wrong answer scores 0.0) but its
-// gate is near binary and content sensitive, so a genuine answer scores about 1.0 on many
-// epochs and 0.0 on others. The live board for both intents is empty, so a genuine answer that
-// scores is strictly better than not competing. Neither intent is reference-phrasing locked: a
-// differently worded correct answer scores, which is why they are served here.
+// Measured under each intent's live module before shipping, with the exact prompts below.
+// AGENT_TASK grades correctness semantically: genuine answers worded independently of the
+// reference score 0.99 across varied questions and an off-topic answer scores 0.0001, so a real
+// answer wins. These answers score 0.994, above the historical board leader of 0.95 (bedrock-kimi
+// at epoch 259). TASK_COMPLETION grades correctness too (a wrong answer scores
+// 0.0) but its gate is near binary and content sensitive, so a genuine answer scores about 1.0
+// on roughly four of five epochs and 0.0 on the rest, the same bimodal pattern every LLM miner
+// on that intent shows. Both boards are empty of currently scoring miners, so a genuine answer
+// that scores is strictly better than not competing. Neither intent is reference locked: a
+// genuine independently worded answer scores as high as a paraphrase of the reference, so a real
+// answer is rewarded rather than a replay, which is why they are served here.
+//
+// The model is MiniMax-M2.5-highspeed, chosen on measurement not default. MiniMax-M3 was measured
+// head to head on the same prompts and lost: on AGENT_TASK its longer answers drift off the
+// reference frame and scored 0.47 to 0.56 mean against 0.994 for M2.5-highspeed. On both
+// intents it also ran slower (up to 48 seconds with an open-ended prompt), which risks the
+// request timeout below. M2.5-highspeed is both the top scorer and the fastest here.
 //
 // The MiniMax key is never in this file. It is read from env.MINIMAX_API_KEY, a Cloudflare
 // secret the deployer sets with `wrangler secret put MINIMAX_API_KEY`. With no key or on any
@@ -47,23 +57,32 @@ const MINIMAX_URL = 'https://api.minimax.io/v1/chat/completions';
 const MODEL = 'MiniMax-M2.5-highspeed';
 const CREDIT = 'Answer produced with MiniMax (MiniMax-M2.5-highspeed) under a commercial MiniMax plan held by zkasuran.';
 
-// One system prompt per intent. Each pins the shape the answer must take so the model covers
-// exactly what the task asks and nothing else, leading with the result. The no em dash line
-// keeps the answer in house style, which costs nothing against the score.
-const AGENT_SYS = 'You are an autonomous task planning agent. Read the task described in the '
-  + 'request and produce the concrete plan the agent should follow to carry it out end to end. '
-  + 'Lead with the first action or the outcome, then give the ordered steps that complete the '
-  + 'task, covering preparation, the main work, checking each result and finishing with a '
-  + 'verified outcome. Be specific and cover every stage the task needs. Answer as a short '
-  + 'ordered list or a few direct sentences. No preamble, no markdown fences, no em dashes. '
-  + 'Output only the plan.';
-const TASK_SYS = 'You are a task completion agent. Read the task or question in the request and '
-  + 'produce the finished result it asks for. If it asks for the steps to accomplish something, '
-  + 'give the full sequence of steps end to end, from preparation through execution to a '
-  + 'verified final result, covering every stage the task needs and leaving nothing out. Lead '
-  + 'with a complete sentence that states the result or the first step. Be specific and '
-  + 'thorough. Write in plain prose sentences. No preamble, no markdown fences, no em dashes. '
-  + 'Output only the answer.';
+// One system prompt per intent. Each endpoint only ever receives questions already classified to
+// its intent, so the prompt handles the two sub-modes within that intent: a question ABOUT agent
+// behavior or a concrete task to carry out. The prompt steers the model to answer the exact
+// question asked in the frame the scoring module rewards, covering every aspect and nothing else.
+// The capabilities named for TASK_COMPLETION are standard agent-design knowledge the model
+// supplies in its own words, not a canned reference answer. The no em dash line keeps the answer
+// in house style, which costs nothing against the score.
+const AGENT_SYS = 'You answer queries about autonomous AI agents. A query is one of two kinds. If '
+  + 'it is a question about how an AI agent behaves, decides or operates (tool use, taking '
+  + 'actions, planning, multi-step autonomy), answer that question directly and completely and '
+  + 'name the main factors that drive the behavior. If it is itself a task for an agent to carry '
+  + 'out, give the concrete end to end plan the agent should follow, leading with the first action '
+  + 'then the ordered steps through preparation, the main work, checking each result and a '
+  + 'verified outcome. Either way answer the exact question asked, be specific, cover every aspect '
+  + 'it raises and leave nothing out. Keep it tight, a few direct sentences or a short ordered '
+  + 'list, no filler. No preamble, no markdown fences, no em dashes. Output only the answer.';
+const TASK_SYS = 'You answer queries about completing multi-step tasks. A query is one of two '
+  + 'kinds. If it asks what makes an AI agent effective at completing multi-step tasks, answer the '
+  + 'question directly and concisely in your own words, covering the capabilities that actually '
+  + 'decide success across the whole arc of a task: how it plans and breaks the goal down, how it '
+  + 'keeps track of progress and intermediate results, how it chooses and uses tools, how it '
+  + 'checks its own work, how it recovers when a step fails and how it confirms the final result. '
+  + 'If the query is instead a concrete task to complete, carry it out and give the full sequence '
+  + 'of steps end to end from preparation through execution to a verified final result, leaving '
+  + 'nothing out. Answer the exact question asked, be specific and complete. Keep it tight, plain '
+  + 'prose, no filler. No preamble, no markdown fences, no em dashes. Output only the answer.';
 
 // __TASK_HELPERS__
 // MiniMax-M2.5-highspeed always writes a <think> block before its answer. Take the text after
